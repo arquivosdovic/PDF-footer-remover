@@ -6,7 +6,5 @@
   PYTHON_VERSION = "3.10"
 
 [functions]
-  directory = "functions"
-
-[functions."process_pdf"]
+  # Força o Netlify a tratar tudo nesta pasta como Python
   runtime = "python3.10"
