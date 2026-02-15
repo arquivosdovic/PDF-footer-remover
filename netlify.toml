@@ -1,10 +1,9 @@
 [build]
-  publish = "." # Onde está seu index.html
+  publish = "."
   functions = "functions"
 
-[functions]
-  # Removemos o node_bundle que causou o erro
-  # E garantimos o runtime correto para o Python
+# Configuramos o runtime especificamente para funções Python
+[functions."process_pdf"]
   runtime = "python3.8"
 
 [[redirects]]
