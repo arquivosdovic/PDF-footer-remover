@@ -1,3 +1,0 @@
-pikepdf
-python-multipart
-requests-toolbelt
