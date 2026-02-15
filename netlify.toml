@@ -1,11 +1,9 @@
 [build]
   publish = "."
+  # Apontando para o caminho padrão ouro do Netlify
   functions = "netlify/functions"
+  # O segredo: esse comando 'ignore' vazio força o Netlify a re-analisar tudo
+  command = "pip install -r requirements.txt"
 
 [build.environment]
   PYTHON_VERSION = "3.10"
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
