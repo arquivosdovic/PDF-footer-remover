@@ -1,4 +1,4 @@
-import { PDFDocument, rgb } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?worker';
 
@@ -8,8 +8,8 @@ const input = document.getElementById('pdfInput');
 const button = document.getElementById('processBtn');
 const status = document.getElementById('status');
 
-// 🔥 margem de segurança acima do rodapé
-const SAFE_PADDING = 10;
+// Ajuste fino do limite do rodapé
+const FOOTER_THRESHOLD = 80;
 
 button.addEventListener('click', async () => {
   if (!input.files.length) {
@@ -21,49 +21,41 @@ button.addEventListener('click', async () => {
     status.textContent = 'Processando...';
 
     const file = input.files[0];
-    const originalBuffer = await file.arrayBuffer();
+    const buffer = await file.arrayBuffer();
+    const bufferForPdfJs = buffer.slice(0);
 
-    const bufferForPdfJs = originalBuffer.slice(0);
-    const bufferForPdfLib = originalBuffer.slice(0);
-
-    // ===== Detecta posição do rodapé com pdf.js =====
     const loadingTask = pdfjsLib.getDocument({ data: bufferForPdfJs });
     const pdf = await loadingTask.promise;
 
-    const srcDoc = await PDFDocument.load(bufferForPdfLib);
     const newPdf = await PDFDocument.create();
+    const font = await newPdf.embedFont(StandardFonts.Helvetica);
 
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
-
       const viewport = page.getViewport({ scale: 1 });
+
+      const pageWidth = viewport.width;
       const pageHeight = viewport.height;
 
-      let minY = pageHeight;
+      const newPage = newPdf.addPage([pageWidth, pageHeight]);
 
       textContent.items.forEach((item) => {
+        const x = item.transform[4];
         const y = item.transform[5];
-        if (y < minY) {
-          minY = y;
-        }
+        const fontSize = item.height;
+
+        // 🔥 Ignora textos dentro da faixa de rodapé
+        if (y < FOOTER_THRESHOLD) return;
+
+        newPage.drawText(item.str, {
+          x: x,
+          y: y,
+          size: fontSize,
+          font: font,
+          color: rgb(0, 0, 0),
+        });
       });
-
-      const footerTop = minY + SAFE_PADDING;
-
-      const [copiedPage] = await newPdf.copyPages(srcDoc, [i - 1]);
-      const { width, height } = copiedPage.getSize();
-
-      // 🔥 Desenha retângulo branco cobrindo o rodapé
-      copiedPage.drawRectangle({
-        x: 0,
-        y: 0,
-        width: width,
-        height: footerTop,
-        color: rgb(1, 1, 1),
-      });
-
-      newPdf.addPage(copiedPage);
     }
 
     const pdfBytes = await newPdf.save();
@@ -79,8 +71,8 @@ button.addEventListener('click', async () => {
     URL.revokeObjectURL(url);
 
     status.textContent = 'Pronto!';
-  } catch (error) {
-    console.error(error);
+  } catch (err) {
+    console.error(err);
     status.textContent = 'Erro ao processar PDF.';
     alert('Erro ao processar PDF. Veja F12.');
   }
