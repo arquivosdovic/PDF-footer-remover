@@ -2,9 +2,12 @@
   publish = "."
   functions = "functions"
 
-# Configuramos o runtime especificamente para funções Python
+[functions]
+  # Força o uso de uma versão estável para todas as funções
+  python_version = "3.10"
+
 [functions."process_pdf"]
-  runtime = "python3.8"
+  runtime = "python3.10"
 
 [[redirects]]
   from = "/api/*"
