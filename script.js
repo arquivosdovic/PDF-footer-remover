@@ -1,4 +1,5 @@
 import { PDFDocument, rgb } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
 import * as pdfjsLib from 'pdfjs-dist';
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?worker';
 
@@ -28,10 +29,14 @@ button.addEventListener('click', async () => {
 
     const newPdf = await PDFDocument.create();
 
+    // 🔥 REGISTRA FONTKIT
+    newPdf.registerFontkit(fontkit);
+
     // 🔥 Carrega fonte Unicode real
     const fontBytes = await fetch('/NotoSans-Regular.ttf').then((res) =>
       res.arrayBuffer(),
     );
+
     const unicodeFont = await newPdf.embedFont(fontBytes);
 
     for (let i = 1; i <= pdf.numPages; i++) {
@@ -49,6 +54,7 @@ button.addEventListener('click', async () => {
         const y = item.transform[5];
         const fontSize = item.height;
 
+        // 🔥 Remove rodapé estruturalmente
         if (y < FOOTER_THRESHOLD) return;
 
         try {
@@ -59,7 +65,7 @@ button.addEventListener('click', async () => {
             font: unicodeFont,
             color: rgb(0, 0, 0),
           });
-        } catch (e) {
+        } catch {
           // ignora caracteres impossíveis
         }
       });
