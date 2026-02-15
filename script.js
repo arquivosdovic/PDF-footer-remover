@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, rgb } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?worker';
 
@@ -8,7 +8,6 @@ const input = document.getElementById('pdfInput');
 const button = document.getElementById('processBtn');
 const status = document.getElementById('status');
 
-// Ajuste fino do limite do rodapé
 const FOOTER_THRESHOLD = 80;
 
 button.addEventListener('click', async () => {
@@ -28,7 +27,12 @@ button.addEventListener('click', async () => {
     const pdf = await loadingTask.promise;
 
     const newPdf = await PDFDocument.create();
-    const font = await newPdf.embedFont(StandardFonts.Helvetica);
+
+    // 🔥 Carrega fonte Unicode real
+    const fontBytes = await fetch('/NotoSans-Regular.ttf').then((res) =>
+      res.arrayBuffer(),
+    );
+    const unicodeFont = await newPdf.embedFont(fontBytes);
 
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
@@ -45,16 +49,19 @@ button.addEventListener('click', async () => {
         const y = item.transform[5];
         const fontSize = item.height;
 
-        // 🔥 Ignora textos dentro da faixa de rodapé
         if (y < FOOTER_THRESHOLD) return;
 
-        newPage.drawText(item.str, {
-          x: x,
-          y: y,
-          size: fontSize,
-          font: font,
-          color: rgb(0, 0, 0),
-        });
+        try {
+          newPage.drawText(item.str, {
+            x,
+            y,
+            size: fontSize,
+            font: unicodeFont,
+            color: rgb(0, 0, 0),
+          });
+        } catch (e) {
+          // ignora caracteres impossíveis
+        }
       });
     }
 
