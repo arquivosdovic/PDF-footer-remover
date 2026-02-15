@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PDF Footer Remover - Pro</title>
+    <style>
+      body {
+        font-family: 'Segoe UI', sans-serif;
+        background: #f4f7f6;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+      }
+      .card {
+        background: white;
+        padding: 40px;
+        border-radius: 12px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 400px;
+        text-align: center;
+      }
+      input[type='file'] {
+        margin: 20px 0;
+        border: 1px solid #ddd;
+        padding: 10px;
+        width: 100%;
+        border-radius: 5px;
+      }
+      .config {
+        text-align: left;
+        margin-bottom: 20px;
+      }
+      label {
+        font-size: 14px;
+        color: #666;
+      }
+      input[type='number'] {
+        width: 60px;
+        padding: 5px;
+        margin-left: 10px;
+      }
+      button {
+        background: #2ecc71;
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: bold;
+        width: 100%;
+      }
+      button:hover {
+        background: #27ae60;
+      }
+      #status {
+        margin-top: 20px;
+        color: #34495e;
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h2>Remover Rodapé Total</h2>
+      <p style="color: #888; font-size: 14px">
+        Limpa texto, ícones e números de página.
+      </p>
+
+      <input type="file" id="pdfFile" accept=".pdf" />
+
+      <div class="config">
+        <label>Altura do rodapé (px):</label>
+        <input type="number" id="footerH" value="50" />
+      </div>
+
+      <button onclick="processOnServer()">Limpar PDF Agora</button>
+      <div id="status"></div>
+    </div>
+
+    <script>
+      async function processOnServer() {
+        const file = document.getElementById('pdfFile').files[0];
+        const footerH = document.getElementById('footerH').value;
+        const status = document.getElementById('status');
+
+        if (!file) return alert('Selecione o arquivo!');
+
+        status.innerText = 'Limpando metadados e streams...';
+
+        const arrayBuffer = await file.arrayBuffer();
+
+        const response = await fetch('/.netlify/functions/process_pdf', {
+          method: 'POST',
+          headers: { 'x-footer-height': footerH },
+          body: arrayBuffer,
+        });
+
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'documento_limpo.pdf';
+          a.click();
+          status.innerText = 'Sucesso! Rodapé removido.';
+        } else {
+          status.innerText = 'Erro no processamento.';
+        }
+      }
+    </script>
+  </body>
+</html>

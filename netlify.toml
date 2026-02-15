@@ -1,0 +1,10 @@
+[build]
+  publish = "." # Onde está seu index.html
+  functions = "functions"
+
+[functions]
+  node_bundle = true
+
+[functions.py]
+  # Configura o runtime do Python
+  runtime = "python3.8"
