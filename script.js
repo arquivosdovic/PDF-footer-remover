@@ -2,7 +2,6 @@ import { PDFDocument } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?worker';
 
-// Configura worker corretamente no Vite
 pdfjsLib.GlobalWorkerOptions.workerPort = new PdfWorker();
 
 const input = document.getElementById('pdfInput');
@@ -19,14 +18,18 @@ button.addEventListener('click', async () => {
     status.textContent = 'Processando...';
 
     const file = input.files[0];
-    const arrayBuffer = await file.arrayBuffer();
+    const originalBuffer = await file.arrayBuffer();
 
-    // Carrega PDF com pdf.js
-    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+    // 🔥 CLONAMOS o buffer para evitar detached error
+    const bufferForPdfJs = originalBuffer.slice(0);
+    const bufferForPdfLib = originalBuffer.slice(0);
+
+    // ===== PDF.JS (análise de texto) =====
+    const loadingTask = pdfjsLib.getDocument({ data: bufferForPdfJs });
     const pdf = await loadingTask.promise;
 
-    // Carrega PDF uma única vez com pdf-lib
-    const srcDoc = await PDFDocument.load(arrayBuffer);
+    // ===== PDF-LIB (edição) =====
+    const srcDoc = await PDFDocument.load(bufferForPdfLib);
     const newPdf = await PDFDocument.create();
 
     for (let i = 1; i <= pdf.numPages; i++) {
@@ -36,7 +39,6 @@ button.addEventListener('click', async () => {
       const viewport = page.getViewport({ scale: 1 });
       const pageHeight = viewport.height;
 
-      // Detecta o texto mais baixo (provável rodapé)
       let minY = pageHeight;
 
       textContent.items.forEach((item) => {
@@ -48,12 +50,9 @@ button.addEventListener('click', async () => {
 
       const footerThreshold = minY + 10;
 
-      // Copia página original
       const [copiedPage] = await newPdf.copyPages(srcDoc, [i - 1]);
-
       const { width } = copiedPage.getSize();
 
-      // Reduz altura removendo área do rodapé
       copiedPage.setSize(width, footerThreshold);
 
       newPdf.addPage(copiedPage);
@@ -75,6 +74,6 @@ button.addEventListener('click', async () => {
   } catch (error) {
     console.error(error);
     status.textContent = 'Erro ao processar PDF.';
-    alert('Ocorreu um erro. Veja o console (F12).');
+    alert('Erro ao processar PDF. Veja F12.');
   }
 });
