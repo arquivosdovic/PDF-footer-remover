@@ -8,6 +8,9 @@ const input = document.getElementById('pdfInput');
 const button = document.getElementById('processBtn');
 const status = document.getElementById('status');
 
+// 🔥 Ajuste fino da margem inferior desejada
+const BOTTOM_MARGIN = 40;
+
 button.addEventListener('click', async () => {
   if (!input.files.length) {
     alert('Selecione um PDF.');
@@ -20,19 +23,18 @@ button.addEventListener('click', async () => {
     const file = input.files[0];
     const originalBuffer = await file.arrayBuffer();
 
-    // Clona para pdf.js
+    // Clona para evitar "detached ArrayBuffer"
     const bufferForPdfJs = originalBuffer.slice(0);
+    const bufferForPdfLib = originalBuffer.slice(0);
 
     const loadingTask = pdfjsLib.getDocument({ data: bufferForPdfJs });
     const pdf = await loadingTask.promise;
 
-    // 🔥 Carrega o documento original (sem recriar páginas)
-    const pdfDoc = await PDFDocument.load(originalBuffer);
+    const srcDoc = await PDFDocument.load(bufferForPdfLib);
+    const newPdf = await PDFDocument.create();
 
-    const pages = pdfDoc.getPages();
-
-    for (let i = 0; i < pdf.numPages; i++) {
-      const page = await pdf.getPage(i + 1);
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
 
       const viewport = page.getViewport({ scale: 1 });
@@ -47,18 +49,22 @@ button.addEventListener('click', async () => {
         }
       });
 
-      // 🔥 Mantém margem inferior bonita
-      const bottomMargin = 50;
-      const footerHeight = minY + bottomMargin;
+      // 🔥 Calcula onde começa o rodapé
+      const footerTop = minY + 10;
 
-      const pdfLibPage = pages[i];
-      const { width, height } = pdfLibPage.getSize();
+      const [copiedPage] = await newPdf.copyPages(srcDoc, [i - 1]);
+      const { width, height } = copiedPage.getSize();
 
-      // 🔥 Apenas recorta — NÃO recria página
-      pdfLibPage.setCropBox(0, footerHeight, width, height - footerHeight);
+      // 🔥 Corta mantendo uma margem inferior bonita
+      const newBottom = footerTop - BOTTOM_MARGIN;
+      const cropBottom = Math.max(newBottom, 0);
+
+      copiedPage.setCropBox(0, cropBottom, width, height - cropBottom);
+
+      newPdf.addPage(copiedPage);
     }
 
-    const pdfBytes = await pdfDoc.save();
+    const pdfBytes = await newPdf.save();
 
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
