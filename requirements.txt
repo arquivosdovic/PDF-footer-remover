@@ -1,2 +1,3 @@
-pikepdf==8.15.1
-python-multipart==0.0.9
+pikepdf
+python-multipart
+requests-toolbelt
