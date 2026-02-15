@@ -2,15 +2,11 @@
   publish = "."
   functions = "functions"
 
-# Define a versão do Python para o ambiente de Build globalmente
 [build.environment]
   PYTHON_VERSION = "3.10"
 
-# Configuração específica da sua função
+[functions]
+  directory = "functions"
+
 [functions."process_pdf"]
   runtime = "python3.10"
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
