@@ -3,8 +3,11 @@
   functions = "functions"
 
 [functions]
-  node_bundle = true
-
-[functions.py]
-  # Configura o runtime do Python
+  # Removemos o node_bundle que causou o erro
+  # E garantimos o runtime correto para o Python
   runtime = "python3.8"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
