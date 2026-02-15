@@ -97,7 +97,6 @@
 
         try {
           const response = await fetch('/.netlify/functions/process_pdf', {
-            // Verifique se não há espaços aqui
             method: 'POST',
             headers: { 'x-footer-height': footerH },
             body: formData,

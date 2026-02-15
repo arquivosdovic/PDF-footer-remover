@@ -1,11 +1,9 @@
 [build]
   publish = "."
-  functions = "functions"
+  functions = "netlify/functions"
 
 [build.environment]
   PYTHON_VERSION = "3.10"
-  # Esta variável avisa ao buildbot que o runtime padrão das funções é Python
-  NETLIFY_ANY_PYTHON = "true" 
 
 [[redirects]]
   from = "/api/*"
