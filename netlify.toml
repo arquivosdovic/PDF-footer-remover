@@ -4,7 +4,10 @@
 
 [build.environment]
   PYTHON_VERSION = "3.10"
+  # Esta variável avisa ao buildbot que o runtime padrão das funções é Python
+  NETLIFY_ANY_PYTHON = "true" 
 
-[functions]
-  # Força o Netlify a tratar tudo nesta pasta como Python
-  runtime = "python3.10"
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
