@@ -20,20 +20,19 @@ button.addEventListener('click', async () => {
     const file = input.files[0];
     const originalBuffer = await file.arrayBuffer();
 
-    // 🔥 Clona o buffer para evitar erro de "detached ArrayBuffer"
+    // Clona para pdf.js
     const bufferForPdfJs = originalBuffer.slice(0);
-    const bufferForPdfLib = originalBuffer.slice(0);
 
-    // ===== PDF.JS (análise de texto) =====
     const loadingTask = pdfjsLib.getDocument({ data: bufferForPdfJs });
     const pdf = await loadingTask.promise;
 
-    // ===== PDF-LIB (edição) =====
-    const srcDoc = await PDFDocument.load(bufferForPdfLib);
-    const newPdf = await PDFDocument.create();
+    // 🔥 Carrega o documento original (sem recriar páginas)
+    const pdfDoc = await PDFDocument.load(originalBuffer);
 
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
+    const pages = pdfDoc.getPages();
+
+    for (let i = 0; i < pdf.numPages; i++) {
+      const page = await pdf.getPage(i + 1);
       const textContent = await page.getTextContent();
 
       const viewport = page.getViewport({ scale: 1 });
@@ -48,19 +47,18 @@ button.addEventListener('click', async () => {
         }
       });
 
-      const footerHeight = minY + 10;
+      // 🔥 Mantém margem inferior bonita
+      const bottomMargin = 50;
+      const footerHeight = minY + bottomMargin;
 
-      const [copiedPage] = await newPdf.copyPages(srcDoc, [i - 1]);
+      const pdfLibPage = pages[i];
+      const { width, height } = pdfLibPage.getSize();
 
-      const { width, height } = copiedPage.getSize();
-
-      // 🔥 Remove somente a parte inferior (rodapé)
-      copiedPage.setCropBox(0, footerHeight, width, height - footerHeight);
-
-      newPdf.addPage(copiedPage);
+      // 🔥 Apenas recorta — NÃO recria página
+      pdfLibPage.setCropBox(0, footerHeight, width, height - footerHeight);
     }
 
-    const pdfBytes = await newPdf.save();
+    const pdfBytes = await pdfDoc.save();
 
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
