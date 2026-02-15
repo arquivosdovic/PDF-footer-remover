@@ -1,5 +1,4 @@
-import { PDFDocument, rgb } from 'pdf-lib';
-import fontkit from '@pdf-lib/fontkit';
+import { PDFDocument } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?worker';
 
@@ -8,8 +7,6 @@ pdfjsLib.GlobalWorkerOptions.workerPort = new PdfWorker();
 const input = document.getElementById('pdfInput');
 const button = document.getElementById('processBtn');
 const status = document.getElementById('status');
-
-const FOOTER_THRESHOLD = 80;
 
 button.addEventListener('click', async () => {
   if (!input.files.length) {
@@ -21,54 +18,46 @@ button.addEventListener('click', async () => {
     status.textContent = 'Processando...';
 
     const file = input.files[0];
-    const buffer = await file.arrayBuffer();
-    const bufferForPdfJs = buffer.slice(0);
+    const originalBuffer = await file.arrayBuffer();
 
+    // 🔥 Clona o buffer para evitar erro de "detached ArrayBuffer"
+    const bufferForPdfJs = originalBuffer.slice(0);
+    const bufferForPdfLib = originalBuffer.slice(0);
+
+    // ===== PDF.JS (análise de texto) =====
     const loadingTask = pdfjsLib.getDocument({ data: bufferForPdfJs });
     const pdf = await loadingTask.promise;
 
+    // ===== PDF-LIB (edição) =====
+    const srcDoc = await PDFDocument.load(bufferForPdfLib);
     const newPdf = await PDFDocument.create();
-
-    // 🔥 REGISTRA FONTKIT
-    newPdf.registerFontkit(fontkit);
-
-    // 🔥 Carrega fonte Unicode real
-    const fontBytes = await fetch('/NotoSans-Regular.ttf').then((res) =>
-      res.arrayBuffer(),
-    );
-
-    const unicodeFont = await newPdf.embedFont(fontBytes);
 
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
-      const viewport = page.getViewport({ scale: 1 });
 
-      const pageWidth = viewport.width;
+      const viewport = page.getViewport({ scale: 1 });
       const pageHeight = viewport.height;
 
-      const newPage = newPdf.addPage([pageWidth, pageHeight]);
+      let minY = pageHeight;
 
       textContent.items.forEach((item) => {
-        const x = item.transform[4];
         const y = item.transform[5];
-        const fontSize = item.height;
-
-        // 🔥 Remove rodapé estruturalmente
-        if (y < FOOTER_THRESHOLD) return;
-
-        try {
-          newPage.drawText(item.str, {
-            x,
-            y,
-            size: fontSize,
-            font: unicodeFont,
-            color: rgb(0, 0, 0),
-          });
-        } catch {
-          // ignora caracteres impossíveis
+        if (y < minY) {
+          minY = y;
         }
       });
+
+      const footerHeight = minY + 10;
+
+      const [copiedPage] = await newPdf.copyPages(srcDoc, [i - 1]);
+
+      const { width, height } = copiedPage.getSize();
+
+      // 🔥 Remove somente a parte inferior (rodapé)
+      copiedPage.setCropBox(0, footerHeight, width, height - footerHeight);
+
+      newPdf.addPage(copiedPage);
     }
 
     const pdfBytes = await newPdf.save();
@@ -84,8 +73,8 @@ button.addEventListener('click', async () => {
     URL.revokeObjectURL(url);
 
     status.textContent = 'Pronto!';
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error(error);
     status.textContent = 'Erro ao processar PDF.';
     alert('Erro ao processar PDF. Veja F12.');
   }
